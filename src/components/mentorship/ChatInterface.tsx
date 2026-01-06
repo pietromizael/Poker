@@ -422,7 +422,7 @@ export function ChatInterface() {
                                         }}
                                         components={{
                                             img: ({node, ...props}) => {
-                                                console.log("Markdown Img Component Called with src:", props.src?.substring(0, 20)); // Debug
+                                                // console.log("Markdown Img Component Called with src"); // Removed to fix TS build error
                                                 const src = (props.src as string) || "";
                                                 if (!src) return null;
 
