@@ -16,6 +16,16 @@ const INITIAL_STATE: PokerState = {
   completedModules: []
 };
 
+export interface Session {
+    id: string;
+    date: any; // Firestore Timestamp
+    durationMinutes: number;
+    buyIn: number;
+    cashOut: number;
+    profit: number;
+    notes?: string;
+}
+
 interface PokerContextWithAuth {
     user: User | null;
     bankroll: number;
