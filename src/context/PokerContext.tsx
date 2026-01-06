@@ -16,15 +16,8 @@ const INITIAL_STATE: PokerState = {
   completedModules: []
 };
 
-export interface Session {
-    id: string;
-    date: any; // Firestore Timestamp
-    durationMinutes: number;
-    buyIn: number;
-    cashOut: number;
-    profit: number;
-    notes?: string;
-}
+// Export Session from types so consumers like SessionLog can find it here
+export type { Session } from '@/lib/types';
 
 interface PokerContextWithAuth {
     user: User | null;
