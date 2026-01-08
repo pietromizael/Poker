@@ -72,7 +72,7 @@ const GeneratedImage = ({ prompt }: { prompt: string }) => {
 
 
 export function ChatInterface() {
-  const { user, bankroll, level, sessions, completeModule } = usePoker();
+  const { user, bankroll, level, sessions, completeModule, addXP } = usePoker();
   const searchParams = useSearchParams();
   const router = useRouter(); // For clearing params
   
@@ -282,26 +282,27 @@ export function ChatInterface() {
       });
 
       // 2. AI Logic...
-      // Retrieve Context if any (we could store context in thread doc, but for now generic is fine unless specific thread)
-      // Ideally we check thread.dta().context here, but for simplicity let's rely on message memory or generic prompt
-      
+      // Retrieve Context if any
       const history = messages.slice(-20).map(m => ({ role: m.role, content: m.content }));
-      // Do NOT push the current message to history; it is sent as 'message' in the body
-
+      
       const userStats = { bankroll, level, sessions };
 
-      // We need to fetch the thread doc to check if it has 'context' (Exam/Study)
-      // Just passing generic prompt for now unless we stored it in state. 
-      // IMPROVEMENT: Load thread metadata into state to re-inject "SYSTEM: EXAM MODE" if needed.
-      // For now, let's just chat normally, assuming the AI sees previous context in history.
-      
+      // Inject Context for the AI
+      let systemInjection = "";
+      if (examModuleId && mode) {
+          systemInjection = `CONTEXT: You are in ${mode === 'exam' ? 'EXAM/CHALLENGE' : 'STUDY'} mode for module ID: "${examModuleId}".
+          If in EXAM mode, test the user relentlessly. If in STUDY mode, teach concepts.
+          Remember to use [[XP: N]] for good answers and [[MODULE_COMPLETED: ${examModuleId}]] when done.`;
+      }
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
             message: userContent, 
             history, 
-            userStats
+            userStats,
+            systemInjection
         }),
       });
 
@@ -310,12 +311,46 @@ export function ChatInterface() {
       
       let aiResponse = data.response;
 
-      // Completion check (would need active reference to module ID, which we can get if we load thread details)
+      // --- PARSE AI COMMANDS ---
+
+      // 1. XP REWARDS
+      // Pattern: [[XP: 25]]
+      const xpMatch = aiResponse.match(/\[\[XP:\s*(\d+)\]\]/);
+      if (xpMatch && xpMatch[1]) {
+          const xpAmount = parseInt(xpMatch[1], 10);
+          console.log(`Giving ${xpAmount} XP via Chat.`);
+          if (addXP) await addXP(xpAmount);
+          toast.success(`+${xpAmount} XP! 📈`);
+          aiResponse = aiResponse.replace(xpMatch[0], ""); // Remove tag from visible text
+      }
+
+      // 2. CHALLENGE OUTCOMES
+      if (aiResponse.includes('[[CHALLENGE_WON]]')) {
+          toast.success("🏆 DESAFIO VENCIDO! +100 XP");
+          if (addXP) await addXP(100);
+          // Mark module as complete if in exam mode? 
+          // Ideally we wait for MODULE_COMPLETED tag or assume winning challenge completes it.
+          // Let's force completion if won.
+          if (examModuleId && completeModule) await completeModule(examModuleId);
+           
+          aiResponse = aiResponse.replace('[[CHALLENGE_WON]]', "\n\n🏆 **DESAFIO VENCIDO!** Você dominou este tópico.");
+      }
+
+      if (aiResponse.includes('[[CHALLENGE_LOST]]')) {
+          toast.error("💀 DESAFIO FALHOU. Tente novamente!");
+          aiResponse = aiResponse.replace('[[CHALLENGE_LOST]]', "\n\n💀 **DESAFIO FALHOU.** Revise os conceitos e tente novamente.");
+      }
+
+      // 3. MODULE COMPLETION
       if (aiResponse.includes(`[[MODULE_COMPLETED:`)) {
           // Extract ID and complete
-           const match = aiResponse.match(/\[\[MODULE_COMPLETED: (.+?)\]\]/);
+           const match = aiResponse.match(/\[\[MODULE_COMPLETED:\s*(.+?)\]\]/);
            if (match && match[1]) {
-               if (completeModule) await completeModule(match[1]);
+               const idToComplete = match[1].trim();
+               if (completeModule) await completeModule(idToComplete);
+               // Add bonus XP for completion
+               if (addXP) await addXP(50);
+               toast.success("Módulo Completado! 🎓");
                aiResponse = aiResponse.replace(match[0], "") + "\n\n✅ **MÓDULO DOMINADO!**";
            }
       }
