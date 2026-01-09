@@ -47,15 +47,18 @@ export async function POST(req: Request) {
       - XP: ${userStats.sessions?.reduce((acc: any, s: any) => acc + (s.xpGained || 0), 0) || 0}
 
       *** FULL PLAYER HISTORY (CHRONOLOGICAL) ***
-      ${userStats.sessions?.map((s: any) => `
+      ${userStats.sessions?.slice().sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((s: any) => `
       - [${new Date(s.date).toLocaleDateString()}] ${s.type}
-        Result: ${s.cashOut - s.buyIn > 0 ? 'WIN' : 'LOSS'} ($${s.cashOut - s.buyIn})
+        Result: ${s.cashOut - s.buyIn > 0 ? 'PROFIT' : 'LOSS'} ($${(s.cashOut - s.buyIn).toFixed(2)})
         Notes: ${s.notes || "None"}
         Hand History Payload:
         ${s.handHistory ? `--- BEGIN HAND HISTORY ---\n${s.handHistory}\n--- END HAND HISTORY ---` : "(No file attached)"}
       `).join('\n')}
       
-      ${systemInjection ? systemInjection : "Focus on the user's evolution based on their history."}`;
+      ${systemInjection ? systemInjection : "Focus on the user's evolution based on their history."}
+      
+      IMPORTANT: Do NOT hallucinate hand details. If the hand history is generic or missing, ask the user for details instead of inventing them.
+      Note: "PROFIT" in a tournament means ITM (In The Money), not necessarily 1st place. Check the Hand History or notes for placement.`;
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey === 'your_key_here' || apiKey === 'your_api_key_here') {
