@@ -45,8 +45,17 @@ export async function POST(req: Request) {
       - Level: ${userStats.level}
       - Bankroll: $${userStats.bankroll}
       - XP: ${userStats.sessions?.reduce((acc: any, s: any) => acc + (s.xpGained || 0), 0) || 0}
+
+      *** FULL PLAYER HISTORY (CHRONOLOGICAL) ***
+      ${userStats.sessions?.map((s: any) => `
+      - [${new Date(s.date).toLocaleDateString()}] ${s.type}
+        Result: ${s.cashOut - s.buyIn > 0 ? 'WIN' : 'LOSS'} ($${s.cashOut - s.buyIn})
+        Notes: ${s.notes || "None"}
+        Hand History Payload:
+        ${s.handHistory ? `--- BEGIN HAND HISTORY ---\n${s.handHistory}\n--- END HAND HISTORY ---` : "(No file attached)"}
+      `).join('\n')}
       
-      ${systemInjection ? systemInjection : "Focus on the user's current level challenges."}`;
+      ${systemInjection ? systemInjection : "Focus on the user's evolution based on their history."}`;
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey === 'your_key_here' || apiKey === 'your_api_key_here') {
