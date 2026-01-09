@@ -67,7 +67,7 @@ export default function Home() {
                     </div>
                  ) : (
                     <div className="space-y-4">
-                        {sessions.slice(0, 5).map(s => (
+{sessions.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5).map(s => (
                             <div key={s.id} className="flex items-center justify-between border-b border-border pb-2 last:border-0 last:pb-0">
                                 <div>
                                     <p className="font-medium text-sm">{s.type === 'Tournament' ? 'Torneio' : 'Cash Game'} - {new Date(s.date).toLocaleDateString('pt-BR')}</p>
